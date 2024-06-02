@@ -1,0 +1,8 @@
+site_name: "linkml-generate"
+theme:
+  name: readthedocs
+nav:
+  - Introduction:
+      Index: index.md
+site_url: https://caufieldjh.github.io/linkml-generate/
+repo_url: https://github.com/caufieldjh/linkml-generate/
