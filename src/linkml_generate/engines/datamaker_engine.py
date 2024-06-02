@@ -5,6 +5,7 @@ SPIRES approach (SPIRESEngine in ontogpt) for performing schema-compliant
 generations, though for producing data from scratch.
 """
 
+import json
 import logging
 
 from dataclasses import dataclass
@@ -141,31 +142,39 @@ class DataMakerEngine(KnowledgeEngine):
 
             {"foo": ["a", "b", "c"]}
 
+        The response may already be in markdown of JSON, in which case it is just parsed
+        to a dictionary directly.
+
         :param results:
         :return:
         """
-        lines = results.splitlines()
-        ann = {}
-        promptable_slots = self.promptable_slots(cls)
-        for line in lines:
-            line = line.strip()
-            if not line:
-                continue
-            if ":" not in line:
-                if len(promptable_slots) == 1:
-                    slot = promptable_slots[0]
-                    logging.warning(
-                        f"Coercing to YAML-like with key {slot.name}: Original line: {line}"
-                    )
-                    line = f"{slot.name}: {line}"
-                else:
-                    logging.error(f"Line '{line}' does not contain a colon; ignoring")
-                    return None
-            r = self._parse_line_to_dict(line, cls)
-            if r is not None:
-                field, val = r
-                ann[field] = val
-        return ann
+        if results.startswith("```json"):
+            logging.info("Parsing JSON response")
+            print(results[7:-3])
+            ann = json.loads(results[7:-3])
+        else:
+            lines = results.splitlines()
+            ann = {}
+            promptable_slots = self.promptable_slots(cls)
+            for line in lines:
+                line = line.strip()
+                if not line:
+                    continue
+                if ":" not in line:
+                    if len(promptable_slots) == 1:
+                        slot = promptable_slots[0]
+                        logging.warning(
+                            f"Coercing to YAML-like with key {slot.name}: Original line: {line}"
+                        )
+                        line = f"{slot.name}: {line}"
+                    else:
+                        logging.error(f"Line '{line}' does not contain a colon; ignoring")
+                        return None
+                r = self._parse_line_to_dict(line, cls)
+                if r is not None:
+                    field, val = r
+                    ann[field] = val
+            return ann
 
     def _parse_line_to_dict(
         self, line: str, cls: ClassDefinition = None
@@ -176,7 +185,7 @@ class DataMakerEngine(KnowledgeEngine):
         # each line is a key-value pair
         logging.info(f"PARSING LINE: {line}")
         field, val = line.split(":", 1)
-        # Field nornalization:
+        # Field normalization:
         # The LLML may mutate the output format somewhat,
         # randomly pluralizing or replacing spaces with underscores
         field = field.lower().replace(" ", "_")
