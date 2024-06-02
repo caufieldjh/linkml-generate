@@ -75,7 +75,7 @@ def generate(
     if inputschema and not Path(inputschema).exists():
         raise FileNotFoundError(f"Cannot find input schema {inputschema}")
 
-    template_details = get_template_details(template=input)
+    template_details = get_template_details(template=inputschema)
 
     ke = DataMakerEngine(
         template_details=template_details,
