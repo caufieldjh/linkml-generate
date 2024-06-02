@@ -1,0 +1,45 @@
+id: http://w3id.org/linkml-generate/food
+name: food
+title: A simple model of food
+description: >-
+  Simple Food Template
+license: https://creativecommons.org/publicdomain/zero/1.0/
+prefixes:
+  rdf: http://www.w3.org/1999/02/22-rdf-syntax-ns#
+  foodon: http://purl.obolibrary.org/obo/foodon_
+  GO: http://purl.obolibrary.org/obo/GO_
+  food: http://w3id.org/linkml-generate/food
+  linkml: https://w3id.org/linkml/
+
+default_prefix: food
+default_range: string
+
+imports:
+  - linkml:types
+  - core
+
+classes:
+  FoodSet:
+    tree_root: true
+    is_a: NamedEntity
+    attributes:
+      terms:
+        range: FoodTerm
+        multivalued: true
+        description: >-
+          A semicolon-separated list of any names of foods.
+
+  # Note: this does not filter to food materials or products alone
+  FoodTerm:
+    is_a: NamedEntity
+    id_prefixes:
+      - FOODON
+      - CHEBI
+    annotations:
+      annotators: sqlite:obo:foodon
+      prompt: >-
+        The name of a Food Ontology term.
+        Examples include: vitamin A, apple juice,
+        okra pod, chocolate substitute,
+        breakfast cereal, tuna (flaked, canned),
+        beef chuck roast
