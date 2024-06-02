@@ -143,19 +143,23 @@ class DataMakerEngine(KnowledgeEngine):
             {"foo": ["a", "b", "c"]}
 
         The response may already be in markdown of JSON, in which case it is just parsed
-        to a dictionary directly.
+        to a dictionary directly, though it may still need some preprocessing
+        for multivalued responses.
 
         :param results:
         :return:
         """
+        promptable_slots = self.promptable_slots(cls)
+
         if results.startswith("```json"):
             logging.info("Parsing JSON response")
-            print(results[7:-3])
             ann = json.loads(results[7:-3])
+            for kv in ann:
+                if isinstance(ann[kv], str) and ";" in ann[kv]:
+                    ann[kv] = [v.strip() for v in ann[kv].split(";")]
         else:
             lines = results.splitlines()
             ann = {}
-            promptable_slots = self.promptable_slots(cls)
             for line in lines:
                 line = line.strip()
                 if not line:
@@ -174,7 +178,7 @@ class DataMakerEngine(KnowledgeEngine):
                 if r is not None:
                     field, val = r
                     ann[field] = val
-            return ann
+        return ann
 
     def _parse_line_to_dict(
         self, line: str, cls: ClassDefinition = None
@@ -248,7 +252,7 @@ class DataMakerEngine(KnowledgeEngine):
         :return:
         """
         raw = self._parse_response_to_dict(results, cls)
-        logging.debug(f"RAW: {raw}")
+        print(f"RAW: {raw}")
         if object:
             raw = {**object, **raw}
         self._auto_add_ids(raw, cls)
@@ -274,16 +278,11 @@ class DataMakerEngine(KnowledgeEngine):
     ) -> Optional[pydantic.BaseModel]:
         """Ground the direct parse of the OpenAI payload.
 
-        The raw openAI payload is a YAML-like string, which is parsed to
-        a response dictionary.
-
-        This dictionary is then grounded, using this method
-
         :param ann: Raw annotation object
         :param cls: schema class the ground object should instantiate
         :return: Grounded annotation object
         """
-        logging.debug(f"Grounding annotation object {ann}")
+        logging.info(f"Grounding annotation object {ann}")
         if cls is None:
             cls = self.template_class
         sv = self.schemaview
