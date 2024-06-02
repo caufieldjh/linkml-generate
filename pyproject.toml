@@ -1,0 +1,36 @@
+[tool.poetry]
+name = "linkml-generate"
+version = "0.0.1"
+description = "An experimental approach to generating synthetic data based on LinkML schemas."
+authors = ["caufieldjh <j.harry.caufield@gmail.com>"]
+license = "BSD-3"
+readme = "README.md"
+
+repository = "https://github.com/caufieldjh/linkml-generate/"
+
+keywords = ["linkml"]
+
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Healthcare Industry",
+    "Programming Language :: Python :: 3 :: Only",
+]
+
+[tool.poetry.dependencies]
+python = ">=3.9,<3.9.7 || >3.9.7,<4.0"
+ontogpt = "^0.3.14"
+click = "*"
+
+[tool.poetry.dev-dependencies]
+tox = ">=3.24.5"
+pytest = ">=6.2.5"
+pytest-cov = ">=3.0.0"
+mkdocs = ">=1.2.3"
+black = ">=22.10.0"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
