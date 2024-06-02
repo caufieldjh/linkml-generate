@@ -31,6 +31,9 @@ pytest-cov = ">=3.0.0"
 mkdocs = ">=1.2.3"
 black = ">=22.10.0"
 
+[tool.poetry.scripts]
+linkml-generate = "linkml_generate.cli:main"
+
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
