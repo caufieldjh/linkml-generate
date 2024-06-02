@@ -5,6 +5,16 @@ import click
 import logging
 import sys
 
+from pathlib import Path
+
+from ontogpt.cli import write_extraction
+from ontogpt.io.template_loader import get_template_details
+
+from linkml_generate.engines.datamaker_engine import DataMakerEngine
+
+DEFAULT_MODEL = "gpt-4o"
+DEFAULT_MODEL_SOURCE = "openai"
+
 inputfile_option = click.option("-i", "--inputfile", help="Path to a LinkML schema in YAML.")
 model_option = click.option(
     "-m",
@@ -49,7 +59,7 @@ def main(verbose: int, quiet: bool):
 @model_option
 @output_option_wb
 @output_format_options
-@click.argument("input", required=False)
+@click.argument("input", required=True)
 def generate(
     inputfile,
     model,
@@ -59,5 +69,24 @@ def generate(
 ):
     """Generate data from a LinkML schema.
     """
-    print("Empty for now.")
-    pass
+    # Choose model based on input, or use the default
+    if not model:
+        model = DEFAULT_MODEL
+    
+    if inputfile and not Path(inputfile).exists():
+        raise FileNotFoundError(f"Cannot find input schema {inputfile}")
+
+    template_details = get_template_details(template=inputfile)
+
+    ke = DataMakerEngine(
+        template_details=template_details,
+        model=model,
+        model_source=DEFAULT_MODEL_SOURCE,
+        use_azure=False,
+        **kwargs,
+    )
+    target_class_def = None
+
+    results = ke.make_data(cls=target_class_def)
+
+    write_extraction(results, output, output_format, ke, inputfile)

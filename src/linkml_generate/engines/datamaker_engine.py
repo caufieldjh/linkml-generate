@@ -35,7 +35,7 @@ RESPONSE_ATOM = Union[str, "ResponseAtom"]  # type: ignore
 RESPONSE_DICT = Dict[FIELD, Union[RESPONSE_ATOM, List[RESPONSE_ATOM]]]
 
 @dataclass
-class DataMaker(KnowledgeEngine):
+class DataMakerEngine(KnowledgeEngine):
     """Data generation engine for LinkML models."""
 
     def make_data(
