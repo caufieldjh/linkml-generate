@@ -36,8 +36,6 @@ But we want to generate a whole set of data objects and have them be different, 
 
 (e.g., roughly equal numbers of male and female patients with some non-binary patients in there too) and/or some unspecified fields.
 
-Maybe just a matter of tweaking the temperature? Still want to adhere to the structure though.
-
 There may be some prompt-based ways to encourage more interesting generation, particularly if we’re generating examples in an attempt to find schema validation edge cases.
 
 For extra fun, work backwards from the generated data and make text corresponding to it.
@@ -45,6 +43,18 @@ For extra fun, work backwards from the generated data and make text correspondin
 The LLM can also do this, of course.
 
 Would also like to support creation of dynamically constructed example sets: just include filename and number of examples to use in each prompt within the schema.
+
+### Promoting computational creativity
+
+Creating synthetic data is only a useful task if the data is representative of some larger collection of observations (real or extrapolated) and/or it contains a range of variability.
+
+Without explicit direction or parameter adjustment, LLMs aren't very good at the latter task - they tend to generate consistently boring results.
+
+How may we stimulate their creativity?
+
+1. Raise the temperature, but ensure adherence to the expected structure.
+2. Explicitly define how entries should vary - this may be an iterative process. For example, if we want a list of fruits, it may help to state that the generated examples should vary in color. We don't always know the full range of properties applicable to a group of objects so generating a list of such properties may be a good start.
+3. Include further detail in the starting schema. If generating a list of street addresses, for example, the LLM may rarely produce street numbers like "33A" unless provided with in-context examples or a field like "street number postfix" to contain these values.
 
 ## Related Work
 
