@@ -55,16 +55,15 @@ def main(verbose: int, quiet: bool):
 
 
 @main.command()
-@inputfile_option
 @model_option
 @output_option_wb
 @output_format_options
-@click.argument("input", required=True)
+@click.argument("inputschema", required=True)
 def generate(
-    inputfile,
     model,
     output,
     output_format,
+    inputschema,
     **kwargs,
 ):
     """Generate data from a LinkML schema.
@@ -73,10 +72,10 @@ def generate(
     if not model:
         model = DEFAULT_MODEL
     
-    if inputfile and not Path(inputfile).exists():
-        raise FileNotFoundError(f"Cannot find input schema {inputfile}")
+    if inputschema and not Path(inputschema).exists():
+        raise FileNotFoundError(f"Cannot find input schema {inputschema}")
 
-    template_details = get_template_details(template=inputfile)
+    template_details = get_template_details(template=input)
 
     ke = DataMakerEngine(
         template_details=template_details,
@@ -89,4 +88,4 @@ def generate(
 
     results = ke.make_data(cls=target_class_def)
 
-    write_extraction(results, output, output_format, ke, inputfile)
+    write_extraction(results, output, output_format, ke, inputschema)
