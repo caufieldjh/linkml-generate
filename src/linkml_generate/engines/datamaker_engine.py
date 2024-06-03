@@ -152,8 +152,14 @@ class DataMakerEngine(KnowledgeEngine):
         promptable_slots = self.promptable_slots(cls)
 
         if results.startswith("```json"):
-            logging.info("Parsing JSON response")
+            logging.info("Parsing JSON response within Markdown")
             ann = json.loads(results[7:-3])
+            for kv in ann:
+                if isinstance(ann[kv], str) and ";" in ann[kv]:
+                    ann[kv] = [v.strip() for v in ann[kv].split(";")]
+        elif results.startswith("{"):
+            logging.info("Parsing raw JSON response")
+            ann = json.loads(results)
             for kv in ann:
                 if isinstance(ann[kv], str) and ";" in ann[kv]:
                     ann[kv] = [v.strip() for v in ann[kv].split(";")]
@@ -251,6 +257,7 @@ class DataMakerEngine(KnowledgeEngine):
         :param object: stub object
         :return:
         """
+        print(results)
         raw = self._parse_response_to_dict(results, cls)
         print(f"RAW: {raw}")
         if object:
