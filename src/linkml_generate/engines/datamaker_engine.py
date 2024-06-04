@@ -212,6 +212,8 @@ class DataMakerEngine(KnowledgeEngine):
         promptable_slots = self.promptable_slots(cls)
         is_json = False
 
+        print(results)
+
         if results.startswith("```json"):
             is_json = True
             logging.info("Parsing JSON response within Markdown")
@@ -244,6 +246,10 @@ class DataMakerEngine(KnowledgeEngine):
                             f"Coercing to YAML-like with key {slot.name}: Original line: {line}"
                         )
                         line = f"{slot.name}: {line}"
+                    # Continue if the line just contains an integer
+                    elif (line.split("."))[0].isdigit():
+                        logging.warning(f"Line '{line}' is a numeric value; continuing")
+                        continue
                     else:
                         logging.error(f"Line '{line}' does not contain a colon; ignoring")
                         return None
