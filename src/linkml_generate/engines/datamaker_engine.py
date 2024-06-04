@@ -229,7 +229,8 @@ class DataMakerEngine(KnowledgeEngine):
                 ann = json.loads(results)
             except json.decoder.JSONDecodeError:
                 is_json = False
-                results = results[1:-1]
+                for ch in ['{', "}", "\""]:
+                    results = results.replace(ch, "")
                 logging.warning(
                     "JSON parsing failed; falling back to YAML-like parsing"
                 )
