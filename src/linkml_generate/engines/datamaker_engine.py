@@ -14,6 +14,7 @@ from typing import Any, Dict, Iterator, List, Optional, Tuple, Union, get_type_h
 import uuid
 
 import pydantic
+from pydantic import ValidationError
 import yaml
 from linkml_runtime.linkml_model import ClassDefinition, SlotDefinition
 from oaklib import BasicOntologyInterface
@@ -213,14 +214,25 @@ class DataMakerEngine(KnowledgeEngine):
         promptable_slots = self.promptable_slots(cls)
         is_json = False
 
+        print(results)
+
         if results.startswith("```json"):
             is_json = True
             logging.info("Parsing JSON response within Markdown")
-            ann = json.loads(results[7:-3])
+            results = results[7:-3]
         elif results.startswith("{"):
             is_json = True
             logging.info("Parsing raw JSON response")
-            ann = json.loads(results)
+
+        # The JSON may still be malformed.
+        # If so, it's not JSON and we need to parse it as YAML-like
+        if is_json:
+            try:
+                ann = json.loads(results)
+            except json.decoder.JSONDecodeError:
+                is_json = False
+                results = results[1:-1]
+                logging.warning("JSON parsing failed; falling back to YAML-like parsing")
 
         if is_json:
             for kv in ann:
@@ -270,7 +282,7 @@ class DataMakerEngine(KnowledgeEngine):
         logging.info(f"PARSING LINE: {line}")
         field, val = line.split(":", 1)
         # Field normalization:
-        # The LLML may mutate the output format somewhat,
+        # The LLM may mutate the output format somewhat,
         # randomly pluralizing or replacing spaces with underscores
         field = field.lower().replace(" ", "_")
         logging.debug(f"  FIELD: {field}")
@@ -388,9 +400,6 @@ class DataMakerEngine(KnowledgeEngine):
             new_ann[field] = []
             logging.debug(f"FIELD: {field} SLOT: {slot.name}")
             for val in vals:
-                # We skip empty values for now,
-                # but will need to replace them before creating the object
-                # or it may not be valid.
                 if not val:
                     continue
                 logging.debug(f"   VAL: {val}")
@@ -432,4 +441,11 @@ class DataMakerEngine(KnowledgeEngine):
 
         py_cls = self.template_module.__dict__[cls.name]
 
-        return py_cls(**new_ann)
+        # Last check to ensure this is a valid object
+        try:
+            outclass = py_cls(**new_ann)
+        except ValidationError as e:
+            logging.error(f"Error creating object: {e}")
+            return None
+
+        return outclass
