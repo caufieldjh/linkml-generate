@@ -214,8 +214,6 @@ class DataMakerEngine(KnowledgeEngine):
         promptable_slots = self.promptable_slots(cls)
         is_json = False
 
-        print(results)
-
         if results.startswith("```json"):
             is_json = True
             logging.info("Parsing JSON response within Markdown")
@@ -232,7 +230,9 @@ class DataMakerEngine(KnowledgeEngine):
             except json.decoder.JSONDecodeError:
                 is_json = False
                 results = results[1:-1]
-                logging.warning("JSON parsing failed; falling back to YAML-like parsing")
+                logging.warning(
+                    "JSON parsing failed; falling back to YAML-like parsing"
+                )
 
         if is_json:
             for kv in ann:
