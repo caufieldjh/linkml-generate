@@ -71,11 +71,29 @@ class DataMakerEngine(KnowledgeEngine):
         )
 
     def _extract_from_text_to_dict(self, text: str, cls: ClassDefinition = None) -> RESPONSE_DICT:
-        raw_text = self._raw_make(text=text, cls=cls)
+        raw_text = self._raw_extract(text=text, cls=cls)
         return self._parse_response_to_dict(raw_text, cls)
 
     def _raw_make(
         self,
+        cls: ClassDefinition = None,
+        object: OBJECT = None,
+        show_prompt: bool = False,
+    ) -> str:
+        """
+        Make generated text based on the provided class and object.
+
+        :param text:
+        :return:
+        """
+        prompt = self.get_generation_prompt(cls=cls, object=object)
+        self.last_prompt = prompt
+        payload = self.client.complete(prompt=prompt, show_prompt=show_prompt)
+        return payload
+
+    def _raw_extract(
+        self,
+        text,
         cls: ClassDefinition = None,
         object: OBJECT = None,
         show_prompt: bool = False,
@@ -86,12 +104,12 @@ class DataMakerEngine(KnowledgeEngine):
         :param text:
         :return:
         """
-        prompt = self.get_completion_prompt(cls=cls, object=object)
+        prompt = self.get_completion_prompt(cls=cls, text=text, object=object)
         self.last_prompt = prompt
         payload = self.client.complete(prompt=prompt, show_prompt=show_prompt)
         return payload
 
-    def get_completion_prompt(
+    def get_generation_prompt(
         self, cls: ClassDefinition = None, object: OBJECT = None
     ) -> str:
         """Get the prompt for the given template, class, and slots."""
@@ -128,6 +146,48 @@ class DataMakerEngine(KnowledgeEngine):
                     prompt += f"{k}: {self._serialize_value(v, slot)}\n"
         return prompt
 
+    def get_completion_prompt(
+        self, cls: ClassDefinition = None, text: str = "", object: OBJECT = None
+    ) -> str:
+        """Get the prompt for the given template."""
+        if cls is None:
+            cls = self.template_class
+        if not text or ("\n" in text or len(text) > 60):
+            prompt = (
+                "From the text below, extract the following entities in the following format:\n\n"
+            )
+        else:
+            prompt = "Split the following piece of text into fields in the following format:\n\n"
+        for slot in self.schemaview.class_induced_slots(cls.name):
+            if ANNOTATION_KEY_PROMPT_SKIP in slot.annotations:
+                continue
+            if ANNOTATION_KEY_PROMPT in slot.annotations:
+                slot_prompt = slot.annotations[ANNOTATION_KEY_PROMPT].value
+            elif slot.description:
+                slot_prompt = slot.description
+            else:
+                if slot.multivalued:
+                    slot_prompt = f"semicolon-separated list of {slot.name}s"
+                else:
+                    slot_prompt = f"the value for {slot.name}"
+            if slot.range in self.schemaview.all_enums():
+                enum_def = self.schemaview.get_enum(slot.range)
+                pvs = [str(k) for k in enum_def.permissible_values.keys()]
+                slot_prompt += f"Must be one of: {', '.join(pvs)}"
+            prompt += f"{slot.name}: <{slot_prompt}>\n"
+        # prompt += "Do not answer if you don't know\n\n"
+        prompt = f"{prompt}\n\nText:\n{text}\n\n===\n\n"
+        if object:
+            if cls is None:
+                cls = self.template_class
+            if isinstance(object, pydantic.BaseModel):
+                object = object.model_dump()
+            for k, v in object.items():
+                if v:
+                    slot = self.schemaview.induced_slot(k, cls.name)
+                    prompt += f"{k}: {self._serialize_value(v, slot)}\n"
+        return prompt
+
     def _parse_response_to_dict(
         self, results: str, cls: ClassDefinition = None
     ) -> Optional[RESPONSE_DICT]:
@@ -150,19 +210,26 @@ class DataMakerEngine(KnowledgeEngine):
         :return:
         """
         promptable_slots = self.promptable_slots(cls)
+        is_json = False
 
         if results.startswith("```json"):
+            is_json = True
             logging.info("Parsing JSON response within Markdown")
             ann = json.loads(results[7:-3])
-            for kv in ann:
-                if isinstance(ann[kv], str) and ";" in ann[kv]:
-                    ann[kv] = [v.strip() for v in ann[kv].split(";")]
         elif results.startswith("{"):
+            is_json = True
             logging.info("Parsing raw JSON response")
             ann = json.loads(results)
+        
+        if is_json:
             for kv in ann:
                 if isinstance(ann[kv], str) and ";" in ann[kv]:
                     ann[kv] = [v.strip() for v in ann[kv].split(";")]
+                line = f"{kv}: {ann[kv]}"
+                r = self._parse_line_to_dict(line, cls)
+                if r is not None:
+                    field, val = r
+                    ann[field] = val
         else:
             lines = results.splitlines()
             ann = {}
