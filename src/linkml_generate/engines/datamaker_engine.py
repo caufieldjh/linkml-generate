@@ -10,7 +10,7 @@ import logging
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, Iterator, List, Optional, Tuple, Union
+from typing import Any, Dict, Iterator, List, Optional, Tuple, Union, get_type_hints
 import uuid
 
 import pydantic
@@ -35,6 +35,7 @@ this_path = Path(__file__).parent
 RESPONSE_ATOM = Union[str, "ResponseAtom"]  # type: ignore
 RESPONSE_DICT = Dict[FIELD, Union[RESPONSE_ATOM, List[RESPONSE_ATOM]]]
 
+
 @dataclass
 class DataMakerEngine(KnowledgeEngine):
     """Data generation engine for LinkML models."""
@@ -52,7 +53,7 @@ class DataMakerEngine(KnowledgeEngine):
         :param object: optional stub object
         :return:
         """
-        self.extracted_named_entities = [] # Clear the named entity buffer
+        self.extracted_named_entities = []  # Clear the named entity buffer
 
         raw_text = self._raw_make(cls=cls, object=object, show_prompt=show_prompt)
         logging.info(f"RAW TEXT: {raw_text}")
@@ -70,7 +71,9 @@ class DataMakerEngine(KnowledgeEngine):
             # not the full list of all named entities across all generations
         )
 
-    def _extract_from_text_to_dict(self, text: str, cls: ClassDefinition = None) -> RESPONSE_DICT:
+    def _extract_from_text_to_dict(
+        self, text: str, cls: ClassDefinition = None
+    ) -> RESPONSE_DICT:
         raw_text = self._raw_extract(text=text, cls=cls)
         return self._parse_response_to_dict(raw_text, cls)
 
@@ -139,7 +142,7 @@ class DataMakerEngine(KnowledgeEngine):
             if cls is None:
                 cls = self.template_class
             if isinstance(object, pydantic.BaseModel):
-                object = object.model_dump()
+                object = object.model_dump(exclude_none=True)
             for k, v in object.items():
                 if v:
                     slot = self.schemaview.induced_slot(k, cls.name)
@@ -153,9 +156,7 @@ class DataMakerEngine(KnowledgeEngine):
         if cls is None:
             cls = self.template_class
         if not text or ("\n" in text or len(text) > 60):
-            prompt = (
-                "From the text below, extract the following entities in the following format:\n\n"
-            )
+            prompt = "From the text below, extract the following entities in the following format:\n\n"
         else:
             prompt = "Split the following piece of text into fields in the following format:\n\n"
         for slot in self.schemaview.class_induced_slots(cls.name):
@@ -181,7 +182,7 @@ class DataMakerEngine(KnowledgeEngine):
             if cls is None:
                 cls = self.template_class
             if isinstance(object, pydantic.BaseModel):
-                object = object.model_dump()
+                object = object.model_dump(exclude_none=True)
             for k, v in object.items():
                 if v:
                     slot = self.schemaview.induced_slot(k, cls.name)
@@ -220,7 +221,7 @@ class DataMakerEngine(KnowledgeEngine):
             is_json = True
             logging.info("Parsing raw JSON response")
             ann = json.loads(results)
-        
+
         if is_json:
             for kv in ann:
                 line = f"{kv}: {ann[kv]}"
@@ -249,7 +250,9 @@ class DataMakerEngine(KnowledgeEngine):
                         logging.warning(f"Line '{line}' is a numeric value; continuing")
                         continue
                     else:
-                        logging.error(f"Line '{line}' does not contain a colon; ignoring")
+                        logging.error(
+                            f"Line '{line}' does not contain a colon; ignoring"
+                        )
                         return None
                 r = self._parse_line_to_dict(line, cls)
                 if r is not None:
@@ -313,7 +316,9 @@ class DataMakerEngine(KnowledgeEngine):
             final_val = vals
         else:
             if len(vals) != 1:
-                logging.error(f"Expected 1 value for {slot.name} in '{line}' but got {vals}")
+                logging.error(
+                    f"Expected 1 value for {slot.name} in '{line}' but got {vals}"
+                )
             final_val = vals[0]  # type: ignore
         return field, final_val
 
@@ -383,6 +388,9 @@ class DataMakerEngine(KnowledgeEngine):
             new_ann[field] = []
             logging.debug(f"FIELD: {field} SLOT: {slot.name}")
             for val in vals:
+                # We skip empty values for now,
+                # but will need to replace them before creating the object
+                # or it may not be valid.
                 if not val:
                     continue
                 logging.debug(f"   VAL: {val}")
@@ -411,7 +419,9 @@ class DataMakerEngine(KnowledgeEngine):
                                 found = True
                                 break
                     if not found:
-                        logging.info(f"Cannot find enum value for {obj} in {enum_def.name}")
+                        logging.info(
+                            f"Cannot find enum value for {obj} in {enum_def.name}"
+                        )
                         obj = None
                 if multivalued:
                     new_ann[field].append(obj)
@@ -419,14 +429,7 @@ class DataMakerEngine(KnowledgeEngine):
                     new_ann[field] = obj
         logging.debug(f"Creating object from dict {new_ann}")
         logging.info(new_ann)
-        
-        # Final check here before creating the object,
-        # as the object creation will fail if there are missing fields
-        for field in new_ann:
-            if new_ann[field] == []:
-                logging.warning(f"Empty value for {field} - setting to a dict")
-                new_ann[field] = {}
-        print(new_ann)
-    
+
         py_cls = self.template_module.__dict__[cls.name]
+
         return py_cls(**new_ann)
