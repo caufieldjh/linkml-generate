@@ -142,9 +142,9 @@ class DataMakerEngine(KnowledgeEngine):
 
             {"foo": ["a", "b", "c"]}
 
-        The response may already be in markdown of JSON, in which case it is just parsed
-        to a dictionary directly, though it may still need some preprocessing
-        for multivalued responses.
+        The response may already be in markdown and/or JSON, in which case it is just parsed
+        to a dictionary directly, though it needs subsequent processing to traverse the
+        nested structure.
 
         :param results:
         :return:
