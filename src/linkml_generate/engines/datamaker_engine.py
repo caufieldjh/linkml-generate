@@ -212,8 +212,6 @@ class DataMakerEngine(KnowledgeEngine):
         promptable_slots = self.promptable_slots(cls)
         is_json = False
 
-        print(results)
-
         if results.startswith("```json"):
             is_json = True
             logging.info("Parsing JSON response within Markdown")
@@ -225,9 +223,9 @@ class DataMakerEngine(KnowledgeEngine):
         
         if is_json:
             for kv in ann:
+                line = f"{kv}: {ann[kv]}"
                 if isinstance(ann[kv], str) and ";" in ann[kv]:
                     ann[kv] = [v.strip() for v in ann[kv].split(";")]
-                line = f"{kv}: {ann[kv]}"
                 r = self._parse_line_to_dict(line, cls)
                 if r is not None:
                     field, val = r
@@ -330,9 +328,9 @@ class DataMakerEngine(KnowledgeEngine):
         :param object: stub object
         :return:
         """
-        print(results)
+        # print(f"RESULTS (pre-parsed): {results}")
         raw = self._parse_response_to_dict(results, cls)
-        print(f"RAW: {raw}")
+        # print(f"RAW: {raw}")
         if object:
             raw = {**object, **raw}
         self._auto_add_ids(raw, cls)
@@ -421,5 +419,14 @@ class DataMakerEngine(KnowledgeEngine):
                     new_ann[field] = obj
         logging.debug(f"Creating object from dict {new_ann}")
         logging.info(new_ann)
+        
+        # Final check here before creating the object,
+        # as the object creation will fail if there are missing fields
+        for field in new_ann:
+            if new_ann[field] == []:
+                logging.warning(f"Empty value for {field} - setting to a dict")
+                new_ann[field] = {}
+        print(new_ann)
+    
         py_cls = self.template_module.__dict__[cls.name]
         return py_cls(**new_ann)
